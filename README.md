@@ -15,7 +15,7 @@ Usage Example:
 ```javascript
 // Basic usage
 $('#element').on('hold', function(e) {
-    console.log(``Hold iteration ${e.iteration} at ${e.currentInterval}ms`);
+    console.log(`Hold iteration ${e.iteration} at ${e.currentInterval}ms`);
 });
 ```
 
