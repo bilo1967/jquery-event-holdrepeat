@@ -28,9 +28,8 @@
  *     acceleration: 0.8,        // Acceleration factor (0-1)
  *     accelerateAfter: 5,       // Start acceleration after N iterations
  *     minRepeatInterval: 30,    // Minimum interval (ms)
- *     maxIterationsPerHold: 50, // Maximum iterations per hold, to prevent infinite
- *                               // loops. Can be set to Infinity
- *     maxDuration: Infinity,    // Maximum hold duration (ms)
+ *     maxIterations: Infinity,  // Maximum iterations per hold (>=1)
+ *     maxDuration: Infinity,    // Maximum duration per hold (ms)
  * }, function(e) {
  *     console.log(`Hold iteration ${e.iteration + 1} at ${e.currentInterval}ms`);
  * });
@@ -73,7 +72,7 @@
         acceleration: false,        // Acceleration factor (0-1) or false
         accelerateAfter: 10,        // Start acceleration after N iterations
         minRepeatInterval: 50,      // Minimum possible interval (ms)
-        maxIterationsPerHold: 50,   // Maximum iterations per hold, to prevent infinite loops
+        maxIterations: Infinity,    // Maximum iterations per hold (>= 1)
         maxDuration: Infinity,      // Maximum hold duration (ms, >= initialDelay+repeatInterval)
     };
 
@@ -230,11 +229,11 @@
     
                 state.iteration++;
                 
-                // Stop looping after maxIterationsPerHold or maxDuration
-                if (state.iteration >= options.maxIterationsPerHold || 
+                // Stop looping after maxIterations or maxDuration
+                if (state.iteration >= options.maxIterations || 
                     state.holdTime >= options.maxDuration ) {
-                    if (state.iteration >= options.maxIterationsPerHold) {
-                        console.warn(`Hold iterations limit reached: ${state.iteration} iterations out of ${options.maxIterationsPerHold}`);
+                    if (state.iteration >= options.maxIterations) {
+                        console.warn(`Hold iterations limit reached: ${state.iteration} iterations out of ${options.maxIterations}`);
                     } else {
                         console.warn(`Hold duration limit reached: duration = ${state.holdTime} ms, time limit ${options.maxDuration}`);
                     }
@@ -381,7 +380,7 @@
                 Math.min(1, Math.max(0, options.acceleration)) : false,
             accelerateAfter: Math.max(1, parseInt(options.accelerateAfter) || defaults.accelerateAfter),
             minRepeatInterval: Math.max(10, parseInt(options.minRepeatInterval) || defaults.minRepeatInterval),
-            maxIterationsPerHold: Math.max(0, parseInt(options.maxIterationsPerHold)) || Infinity,
+            maxIterations: Math.max(1, parseInt(options.maxIterations)) || Infinity,
             maxDuration: Math.max(id + ri, parseInt(options.maxDuration)) || Infinity,
         };
     }    
