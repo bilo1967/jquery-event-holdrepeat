@@ -10,7 +10,7 @@
 	<!-- JQuery -->
 	<script src="https://code.jquery.com/jquery-3.7.1.js" integrity="sha256-eKhayi8LEQwp4NKxN+CfCh+3qOVUtJn3QNZ0TciWLP4=" crossorigin="anonymous"></script>  
   
-    <script src="js/jquery-event-hold.js"></script>
+    <script src="js/jquery-event-holdrepeat.js"></script>
 
 <script>
     $(document).ready(function() {
@@ -25,7 +25,7 @@
         };
         
         // Binding degli eventi custom
-        $('.btn-hold').on('hold', 
+        $('.btn-holdrepeat').on('holdrepeat', 
             config, 
             function(e) { 
                 const a = $(this).data('action') == 'increase' ? 1 : -1;
@@ -47,9 +47,9 @@
         
             <div class="col-sm-3">
                 <div class="input-group mb-3">
-                    <button class="btn btn-outline-secondary btn-hold" type="button" data-action="decrease">-</button>
+                    <button class="btn btn-outline-secondary btn-holdrepeat" type="button" data-action="decrease">-</button>
                     <input id="counter" type="text" class="form-control" placeholder="click or hold buttons" value="0">
-                    <button class="btn btn-outline-secondary btn-hold" type="button"  data-action="increase">+</button>
+                    <button class="btn btn-outline-secondary btn-holdrepeat" type="button"  data-action="increase">+</button>
                 </div>
             </div>
 
