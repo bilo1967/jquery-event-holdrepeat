@@ -1,9 +1,8 @@
-// VERSIONE 1
 /*
- * jQuery Hold Event Plugin
+ * jQuery holdrepeat Event Plugin
  * 
- * This plugin extends jQuery to support "hold" events, which are triggered when
- * an element is pressed and held at least for a specified duration. During the 
+ * This plugin extends jQuery to support "holdrepeat" events, which are triggered 
+ * when an element is pressed and held at least for a specified duration. During the 
  * hold, the event is triggered repeatedly at a configurable interval, with optional
  * acceleration to decrease the interval over time (and increase the trigger rate).
  * 
@@ -18,12 +17,12 @@
  * Usage Example:
  * 
  * // Basic usage
- * $('#element').on('hold', function(e) {
+ * $('#element').on('holdrepeat', function(e) {
  *     console.log(`Hold iteration ${e.iteration} at ${e.currentInterval}ms`);
  * });
  * 
  * // With custom options
- * $('#element').on('hold', {
+ * $('#element').on('holdrepeat', {
  *     initialDelay: 300,        // Delay before first hold event (ms)
  *     repeatInterval: 100,      // Base interval between hold events (ms)
  *     acceleration: 0.8,        // Acceleration factor (0-1)
@@ -31,12 +30,13 @@
  *     minRepeatInterval: 30,    // Minimum interval (ms)
  *     maxIterationsPerHold: 50, // Maximum iterations per hold, to prevent infinite
  *                               // loops. Can be set to Infinity
+ *     maxDuration: Infinity,    // Maximum hold duration (ms)
  * }, function(e) {
  *     console.log(`Hold iteration ${e.iteration + 1} at ${e.currentInterval}ms`);
  * });
  * 
  * // Event delegation
- * $(document).on('hold', '.dynamic-element', function(e) {
+ * $(document).on('holdrepeat', '.dynamic-element', function(e) {
  *     console.log(`Hold on dynamically added element`);
  * });
  * 
@@ -50,8 +50,8 @@
  * - iteration: The current hold iteration (starts at 0).
  * - startTime: Timestamp when the hold started.
  * - currentInterval: The current interval between events (ms).
- * - duration: (holdstop only) Total duration of the hold (ms).
  * - accelerating: true, if acceleration is on
+ * - duration: (holdstop only) Total duration of the hold (ms).
  * 
  * Dependencies:
  * - jQuery 1.7+
@@ -67,21 +67,22 @@
 
     // Default configuration parameters
     const defaults = {
-        initialDelay: 500,          // Initial delay before first hold event (ms)
+        initialDelay: 400,          // Initial delay before first hold event (ms)
         repeatInterval: 200,        // Base interval between hold events (ms)
         preventScrollOnTouch: true, // Prevent touch scrolling during hold
         acceleration: false,        // Acceleration factor (0-1) or false
         accelerateAfter: 10,        // Start acceleration after N iterations
         minRepeatInterval: 50,      // Minimum possible interval (ms)
         maxIterationsPerHold: 50,   // Maximum iterations per hold, to prevent infinite loops
+        maxDuration: Infinity,      // Maximum hold duration (ms, >= initialDelay+repeatInterval)
     };
 
 
     /**
      * The `elementStates` WeakMap is used to store the state of each element
-     * that has the custom "hold" event attached to it. Each DOM element 
+     * that has the custom "holdrepeat" event attached to it. Each DOM element 
      * acts as a key in the WeakMap, and the associated value is an object 
-     * representing the current state of the element during the "hold" 
+     * representing the current state of the element during the "holdrepeat" 
      * interaction.
      *
      * The stored state includes:
@@ -89,9 +90,9 @@
      * - controller: instance of AbortController to remove the vanilla event 
      *   listener which consumes ghost clicks for current element.
      * - startTime: timestamp of when hold started.
-     * - iteration: the number of "hold" event iterations (number of repetitions).
-     * - currentInterval: current interval between "hold" repetitions.
-     * - options: configured options for the "hold" event 
+     * - iteration: the number of "holdrepeat" event iterations (number of repetitions).
+     * - currentInterval: current interval between "holdrepeat" repetitions.
+     * - options: configured options for the "holdrepeat" event 
      *
      * **Key Management:**
      *
@@ -127,9 +128,8 @@
     const elementStates = new WeakMap();
 
 
-
     /**
-     * Handles the start of the "hold" interaction.
+     * Handles the start of the "holdrepeat" interaction.
      * @param {Event} event - The original event (mouse or touch).
      */
     function handleStart(event) {
@@ -159,21 +159,32 @@
         };
         elementStates.set(element, state);
 
-        // Block native clicks
+        /*
+         * Since a ‘hold’ event can be triggered by a mousedown-mouseup 
+         * sequence, and since the same sequence, no matter how prolonged,
+         * also triggers ‘click’ events, if we want to prevent a ‘hold’
+         * from also generating an unwanted click, we must activate an 
+         * event listener that blocks it.
+         * This event listener will be destroyed by issuing an abort() on
+         * an AbortController(), whose signal will be bound to the event
+         * listener.
+         */
         element.addEventListener('click', e => {
             e.stopImmediatePropagation();
             e.preventDefault();
         }, { 
-            capture: true, 
-            signal: state.controller.signal 
+            capture: true, // ensures to capture the event before jquery
+            signal: state.controller.signal, // bind an AbortController to self-destroy 
+            once: true, // likely redundant, just-in-case
         });
         
+
         // Start the hold sequence
         startHoldSequence(element, state, event, options);
     }
 
     /**
-     * Handles the end of the "hold" interaction.
+     * Handles the end of the "holdrepeat" interaction.
      * @param {Event} event - The original event (mouse or touch).
      */
     function handleEnd(event) {
@@ -209,17 +220,25 @@
             // Initial trigger (holdstart + first iteration)
             $element.trigger($.Event('holdstart', {
                 originalEvent: originalEvent,
-                startTime: state.startTime
+                startTime: state.startTime,
             }));
             triggerHoldEvent(element, 0, originalEvent);
 
             // Phase 2: Start the repeat cycle
             const repeatHandler = () => {
+                
+                state.holdTime = Date.now() - state.startTime;
+    
                 state.iteration++;
-
-                // Stop looping after maxIterationsPerHold
-                if (state.iteration >= options.maxIterationsPerHold) {
-                    console.warn(`Hold iterations limit reached (${options.maxIterationsPerHold})`);
+                
+                // Stop looping after maxIterationsPerHold or maxDuration
+                if (state.iteration >= options.maxIterationsPerHold || 
+                    state.holdTime >= options.maxDuration ) {
+                    if (state.iteration >= options.maxIterationsPerHold) {
+                        console.warn(`Hold iterations limit reached: ${state.iteration} iterations out of ${options.maxIterationsPerHold}`);
+                    } else {
+                        console.warn(`Hold duration limit reached: duration = ${state.holdTime} ms, time limit ${options.maxDuration}`);
+                    }
                     cleanupElementState(
                         element, 
                         state, 
@@ -263,10 +282,11 @@
      */
     function triggerHoldEvent(element, iteration, originalEvent) {
         const state = elementStates.get(element);
-        $(element).trigger($.Event('hold', {
+        $(element).trigger($.Event('holdrepeat', {
             originalEvent: originalEvent,
             iteration: iteration,
             startTime: state.startTime,
+            holdTime: state.holdTime,
             currentInterval: state.currentInterval,
             accelerating: (state.options.acceleration !== false) && state.iteration >= state.options.accelerateAfter,
         }));
@@ -286,7 +306,7 @@
         clearTimeout(state.repeatTimer);
 
         // Remove the native click listener at next event cycle
-        abortControllerWithDelay(state.controller);
+        //abortControllerWithDelay(state.controller);
 
         // Final event logic
         if (isShortPress && isClick) {
@@ -350,31 +370,37 @@
      * @returns {Object} - The normalized options.
      */
     function normalizeOptions(options) {
+        
+        const id = Math.max(0, parseInt(options.initialDelay) || defaults.initialDelay);
+        const ri = Math.max(50, parseInt(options.repeatInterval) || defaults.repeatInterval);
+        
         return {
-            initialDelay: Math.max(0, parseInt(options.initialDelay) || defaults.initialDelay),
-            repeatInterval: Math.max(50, parseInt(options.repeatInterval) || defaults.repeatInterval),
+            initialDelay: id,
+            repeatInterval: ri,
             preventScrollOnTouch: !!options.preventScrollOnTouch,
             acceleration: typeof options.acceleration === 'number' ? 
                 Math.min(1, Math.max(0, options.acceleration)) : false,
             accelerateAfter: Math.max(1, parseInt(options.accelerateAfter) || defaults.accelerateAfter),
             minRepeatInterval: Math.max(10, parseInt(options.minRepeatInterval) || defaults.minRepeatInterval),
             maxIterationsPerHold: Math.max(0, parseInt(options.maxIterationsPerHold)) || Infinity,
+            maxDuration: Math.max(id + ri, parseInt(options.maxDuration)) || Infinity,
         };
     }    
 
 
     /**
-     * jQuery special event setup for "hold".
+     * jQuery special event setup for "holdrepeat".
      */
-    $.event.special.hold = {
+    $.event.special.holdrepeat = {
         setup: function(data) { /* empty */ }, 
         teardown: function() { /* empty */ }, 
 
         /**
-         * Adds event handlers for the "hold" event.
+         * Adds event handlers for the "holdrepeat" event.
          * @param {Object} handleObj - The event handler object.
          */
         add: function(handleObj) {
+
             const options = normalizeOptions(
                 $.extend({}, defaults, handleObj.data)
             );
@@ -401,7 +427,7 @@
         },
 
         /**
-         * Removes event handlers for the "hold" event.
+         * Removes event handlers for the "holdrepeat" event.
          * @param {Object} handleObj - The event handler object.
          */
         remove: function(handleObj) {
