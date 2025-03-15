@@ -175,7 +175,6 @@
         }, { 
             capture: true, // ensures to capture the event before jquery
             signal: state.controller.signal, // bind an AbortController to self-destroy 
-            once: true, // likely redundant, just-in-case
         });
         
 
@@ -306,7 +305,7 @@
         clearTimeout(state.repeatTimer);
 
         // Remove the native click listener at next event cycle
-        //abortControllerWithDelay(state.controller);
+        abortControllerWithDelay(state.controller);
 
         // Final event logic
         if (isShortPress && isClick) {
