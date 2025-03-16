@@ -46,6 +46,7 @@ Triggered events:
 - holdstart: Triggered when the initial delay expires.
 - holdrepeat: Triggered repeatedly during the hold.
 - holdstop: Triggered when the hold ends.
+- holdrepeathalt: Triggered when max repetitions or time imit is reached
 
 Event Object Properties:
 - originalEvent: The native mouse/touch event.
@@ -54,6 +55,9 @@ Event Object Properties:
 - currentInterval: The current interval between events (ms).
 - duration: (holdstop only) Total duration of the hold (ms).
 - accelerating: true, if acceleration is on
+- haltReason: reason why repetitions halted (string, holdrepeathalt only)
+- haltTime: time when repetitions halted (timestamp, holdrepeathalt only)
+ 
 
 Dependencies:
 - jQuery 1.7+
