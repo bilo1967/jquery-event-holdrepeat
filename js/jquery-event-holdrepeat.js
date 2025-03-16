@@ -29,7 +29,7 @@
  *     accelerateAfter: 5,       // Start acceleration after N iterations
  *     minRepeatInterval: 30,    // Minimum interval (ms)
  *     maxIterations: Infinity,  // Maximum iterations per hold (>=1)
- *     maxDuration: Infinity,    // Maximum duration per hold (ms)
+ *     maxDuration: Infinity,    // Maximum hold duration (ms)
  * }, function(e) {
  *     console.log(`Hold iteration ${e.iteration + 1} at ${e.currentInterval}ms`);
  * });
@@ -41,8 +41,9 @@
  * 
  * Events:
  * - holdstart: Triggered when the initial delay expires.
- * - hold: Triggered repeatedly during the hold.
+ * - holdrepeat: Triggered repeatedly during the hold.
  * - holdstop: Triggered when the hold ends.
+ * - holdrepeathalt: Triggered when repetitions reach time or iteration limit
  * 
  * Event Object Properties:
  * - originalEvent: The native mouse/touch event.
@@ -51,6 +52,8 @@
  * - currentInterval: The current interval between events (ms).
  * - accelerating: true, if acceleration is on
  * - duration: (holdstop only) Total duration of the hold (ms).
+ * - haltReason: reason why repetitions halted (string, holdrepeathalt only)
+ * - haltTime: time when repetitions halted (timestamp, holdrepeathalt only)
  * 
  * Dependencies:
  * - jQuery 1.7+
@@ -200,7 +203,7 @@
         const isShortPress = (Date.now() - state.startTime) < state.options.initialDelay;
 
         // Clean up the state
-        cleanupElementState(element, state, event, isShortPress, isClick    );
+        cleanupElementState(element, state, event, isShortPress, isClick);
     }
 
 
@@ -232,18 +235,28 @@
                 // Stop looping after maxIterations or maxDuration
                 if (state.iteration >= options.maxIterations || 
                     state.holdTime >= options.maxDuration ) {
+                        
+                    const reason = state.iteration >= options.maxIterations ? 'iteration limit' : 'time limit';
+/*                    
                     if (state.iteration >= options.maxIterations) {
                         console.warn(`Hold iterations limit reached: ${state.iteration} iterations out of ${options.maxIterations}`);
                     } else {
                         console.warn(`Hold duration limit reached: duration = ${state.holdTime} ms, time limit ${options.maxDuration}`);
                     }
-                    cleanupElementState(
-                        element, 
-                        state, 
-                        originalEvent, 
-                        false,  // isShortPress
-                        false   // isClick
-                    );
+*/
+                    // Trigger a holdrepeathalt event with the reason for the halt
+                    $element.trigger($.Event('holdrepeathalt', {
+                        haltReason: reason, 
+                        haltTime: Date.now(),
+                        startTime: state.startTime,
+                        iteration: state.iteration,
+                    }));
+
+                    // Just exit the repetition loop by stopping all timers and return.
+                    // The element state will be cleaned (and the hold will end) when the 
+                    // button is released or the touch ends or when the cursor leaves the
+                    // element area
+                    clearTimers(state);
                     return;
                 }
 
@@ -291,6 +304,17 @@
     }
     
     /**
+     * Handles the stop of the timers in the target element state
+     * @param {HTMLElement} element - The target element.
+     */
+    function clearTimers(state) {
+        
+        // Stop all timers
+        clearTimeout(state.initialTimer);
+        clearTimeout(state.repeatTimer);
+    }
+    
+    /**
      * Handles the cleanup of the state and final events.
      * @param {HTMLElement} element - The target element.
      * @param {Object} state - The current state from the WeakMap.
@@ -300,8 +324,9 @@
      */
     function cleanupElementState(element, state, event, isShortPress = false, isClick = false) {
         // Stop all timers
-        clearTimeout(state.initialTimer);
-        clearTimeout(state.repeatTimer);
+        clearTimers(state);
+//      clearTimeout(state.initialTimer);
+//      clearTimeout(state.repeatTimer);
 
         // Remove the native click listener at next event cycle
         abortControllerWithDelay(state.controller);
