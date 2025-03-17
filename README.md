@@ -1,7 +1,7 @@
 # jquery-event-holdrepeat
 On Mouse HoldRepeat event handling component for JQuery
 
-This plugin extends jQuery to support "holdrepeat" events, which are triggered when an element is pressed and held at least for a specified duration. During the hold, the event is triggered repeatedly at a configurable interval, with optional acceleration to decrease the interval over time (and increase the trigger rate).
+This plugin extends jQuery to support "holdrepeat" events, which are triggered when an element is pressed and held at least for a specified duration, to distinguish it from a click. During the hold, the event is triggered repeatedly at a configurable interval, with optional acceleration to decrease the interval over time (and increase the trigger rate).
 
 Features:
 - Customizable initial delay before the first holdrepeat event.
