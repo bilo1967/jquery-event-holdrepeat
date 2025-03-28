@@ -17,12 +17,12 @@
  * Usage Example:
  * 
  * // Basic usage
- * $('#element').on('holdrepeat', function(e) {
+ * $("#element").on("holdrepeat", function(e) {
  *     console.log(`Hold iteration ${e.iteration} at ${e.currentInterval}ms`);
  * });
  * 
  * // With custom options
- * $('#element').on('holdrepeat', {
+ * $("#element").on("holdrepeat", {
  *     initialDelay: 300,        // Delay before first hold event (ms)
  *     repeatInterval: 100,      // Base interval between hold events (ms)
  *     acceleration: 0.8,        // Acceleration factor (0-1)
@@ -35,7 +35,7 @@
  * });
  * 
  * // Event delegation
- * $(document).on('holdrepeat', '.dynamic-element', function(e) {
+ * $(document).on("holdrepeat", ".dynamic-element", function(e) {
  *     console.log(`Hold on dynamically added element`);
  * });
  * 
@@ -64,8 +64,8 @@
  * - Does *NOT* support Internet Explorer (any version).
  */
 
-(function($) {
-    'use strict';
+( function( $ ) {
+    "use strict";
 
     // Default configuration parameters
     const defaults = {
@@ -124,8 +124,8 @@
      * When a user starts pressing an element, a new state is created in the WeakMap.
      * This state is updated during the interaction (e.g., incrementing the iteration
      * and adjusting the interval) and is automatically removed when the interaction ends.
-    */
-    
+     */
+
     // Element-specific state management registry (uses a WeakMap)
     const elementStates = new WeakMap();
 
@@ -134,22 +134,23 @@
      * Handles the start of the "holdrepeat" interaction.
      * @param {Event} event - The original event (mouse or touch).
      */
-    function handleStart(event) {
+    function handleStart( event ) {
+
         // Find the target element
-        const element = getTargetElement(event);
-        if (!element) return;
+        const element = getTargetElement( event );
+        if ( !element ) return;
 
         // Check if the element is disabled
-        if ($(element).is(':disabled, .disabled, [aria-disabled="true"]')) return;
+        if ( $( element ).is( ":disabled, .disabled, [aria-disabled='true']" ) ) return;
 
         // Get the configured options
         const container = event.delegateTarget || element;
         const options = normalizeOptions(
-            $(container).data('holdOptions') || defaults
+            $( container ).data( "holdOptions" ) || defaults
         );
 
         // If the element already has a state, exit
-        if (elementStates.has(element)) return;
+        if ( elementStates.has( element ) ) return;
 
         // Create a new state for the element
         const state = {
@@ -159,7 +160,7 @@
             currentInterval: options.repeatInterval,
             options: options
         };
-        elementStates.set(element, state);
+        elementStates.set( element, state );
 
         /*
          * Since a ‘hold’ event can be triggered by a mousedown-mouseup 
@@ -171,39 +172,39 @@
          * an AbortController(), whose signal will be bound to the event
          * listener.
          */
-        element.addEventListener('click', e => {
+        element.addEventListener( "click", e => {
             e.stopImmediatePropagation();
             e.preventDefault();
-        }, { 
+        }, {
             capture: true, // ensures to capture the event before jquery
             signal: state.controller.signal, // bind an AbortController to self-destroy 
-        });
-        
+        } );
 
         // Start the hold sequence
-        startHoldSequence(element, state, event, options);
+        startHoldSequence( element, state, event, options );
     }
 
     /**
      * Handles the end of the "holdrepeat" interaction.
      * @param {Event} event - The original event (mouse or touch).
      */
-    function handleEnd(event) {
+    function handleEnd( event ) {
+
         // Find the target element
-        const element = getTargetElement(event);
-        if (!element || !elementStates.has(element)) return;
+        const element = getTargetElement( event );
+        if ( !element || !elementStates.has( element ) ) return;
 
         // Get the current state
-        const state = elementStates.get(element);
+        const state = elementStates.get( element );
 
         // Determine if there was a click (mouseup/touchend after a mousedown/touchstart)
-        const isClick = ['mouseup', 'touchend'].includes(event.type);
-        
+        const isClick = [ "mouseup", "touchend" ].includes( event.type );
+
         // Determine if the mouse click/touch was long enough to start an hold event
-        const isShortPress = (Date.now() - state.startTime) < state.options.initialDelay;
+        const isShortPress = ( Date.now() - state.startTime ) < state.options.initialDelay;
 
         // Clean up the state
-        cleanupElementState(element, state, event, isShortPress, isClick);
+        cleanupElementState( element, state, event, isShortPress, isClick );
     }
 
 
@@ -214,55 +215,50 @@
      * @param {Event} originalEvent - The original browser event.
      * @param {Object} options - The configured options.
      */
-    function startHoldSequence(element, state, originalEvent, options) {
-        const $element = $(element);
-        
-        state.initialTimer = setTimeout(() => {
+    function startHoldSequence( element, state, originalEvent, options ) {
+        const $element = $( element );
+
+        state.initialTimer = setTimeout( () => {
+
             // Initial trigger (holdstart + first iteration)
-            $element.trigger($.Event('holdstart', {
+            $element.trigger( $.Event( "holdstart", {
                 originalEvent: originalEvent,
                 startTime: state.startTime,
-            }));
-            triggerHoldEvent(element, 0, originalEvent);
+            } ) );
+            triggerHoldEvent( element, 0, originalEvent );
 
             // Phase 2: Start the repeat cycle
             const repeatHandler = () => {
-                
+
                 state.holdTime = Date.now() - state.startTime;
-    
+
                 state.iteration++;
-                
+
                 // Stop looping after maxIterations or maxDuration
-                if (state.iteration >= options.maxIterations || 
+                if ( state.iteration >= options.maxIterations ||
                     state.holdTime >= options.maxDuration ) {
-                        
-                    const reason = state.iteration >= options.maxIterations ? 'iteration limit' : 'time limit';
-/*                    
-                    if (state.iteration >= options.maxIterations) {
-                        console.warn(`Hold iterations limit reached: ${state.iteration} iterations out of ${options.maxIterations}`);
-                    } else {
-                        console.warn(`Hold duration limit reached: duration = ${state.holdTime} ms, time limit ${options.maxDuration}`);
-                    }
-*/
+
+                    const reason = state.iteration >= options.maxIterations ? "iteration limit" : "time limit";
+
                     // Trigger a holdrepeathalt event with the reason for the halt
-                    $element.trigger($.Event('holdrepeathalt', {
-                        haltReason: reason, 
+                    $element.trigger( $.Event( "holdrepeathalt", {
+                        haltReason: reason,
                         haltTime: Date.now(),
                         startTime: state.startTime,
                         iteration: state.iteration,
-                    }));
+                    } ) );
 
                     // Just exit the repetition loop by stopping all timers and return.
                     // The element state will be cleaned (and the hold will end) when the 
                     // button is released or the touch ends or when the cursor leaves the
                     // element area
-                    clearTimers(state);
+                    clearTimers( state );
                     return;
                 }
 
                 // Apply acceleration after accelerateAfter iterations
-                if (options.acceleration !== false && 
-                    state.iteration >= options.accelerateAfter) {
+                if ( options.acceleration !== false &&
+                    state.iteration >= options.accelerateAfter ) {
                     state.currentInterval = Math.max(
                         state.currentInterval * options.acceleration,
                         options.minRepeatInterval
@@ -270,16 +266,16 @@
                 }
 
                 // Trigger the hold event
-                triggerHoldEvent(element, state.iteration, originalEvent);
+                triggerHoldEvent( element, state.iteration, originalEvent );
 
                 // Schedule the next iteration
-                state.repeatTimer = setTimeout(repeatHandler, state.currentInterval);
+                state.repeatTimer = setTimeout( repeatHandler, state.currentInterval );
             };
 
             // First call 
-            state.repeatTimer = setTimeout(repeatHandler, state.currentInterval);
-            
-        }, options.initialDelay);
+            state.repeatTimer = setTimeout( repeatHandler, state.currentInterval );
+
+        }, options.initialDelay );
     }
 
 
@@ -291,29 +287,29 @@
      * @param {number} iteration - The current iteration count.
      * @param {Event} originalEvent - The original browser event.
      */
-    function triggerHoldEvent(element, iteration, originalEvent) {
-        const state = elementStates.get(element);
-        $(element).trigger($.Event('holdrepeat', {
+    function triggerHoldEvent( element, iteration, originalEvent ) {
+        const state = elementStates.get( element );
+        $( element ).trigger( $.Event( "holdrepeat", {
             originalEvent: originalEvent,
             iteration: iteration,
             startTime: state.startTime,
             holdTime: state.holdTime,
             currentInterval: state.currentInterval,
-            accelerating: (state.options.acceleration !== false) && state.iteration >= state.options.accelerateAfter,
-        }));
+            accelerating: ( state.options.acceleration !== false ) && state.iteration >= state.options.accelerateAfter,
+        } ) );
     }
-    
+
     /**
      * Handles the stop of the timers in the target element state
      * @param {HTMLElement} element - The target element.
      */
-    function clearTimers(state) {
-        
+    function clearTimers( state ) {
+
         // Stop all timers
-        clearTimeout(state.initialTimer);
-        clearTimeout(state.repeatTimer);
+        clearTimeout( state.initialTimer );
+        clearTimeout( state.repeatTimer );
     }
-    
+
     /**
      * Handles the cleanup of the state and final events.
      * @param {HTMLElement} element - The target element.
@@ -322,34 +318,34 @@
      * @param {boolean} isShortPress - Whether the press was shorter than the initial delay.
      * @param {boolean} isClick - Whether the event is a mouseup/touchend.
      */
-    function cleanupElementState(element, state, event, isShortPress = false, isClick = false) {
+    function cleanupElementState( element, state, event, isShortPress = false, isClick = false ) {
+
         // Stop all timers
-        clearTimers(state);
-//      clearTimeout(state.initialTimer);
-//      clearTimeout(state.repeatTimer);
+        clearTimers( state );
 
         // Remove the native click listener at next event cycle
-        abortControllerWithDelay(state.controller);
+        abortControllerWithDelay( state.controller );
 
         // Final event logic
-        if (isShortPress && isClick) {
+        if ( isShortPress && isClick ) {
+
             // Case A: Short press + mouseup/touchend -> trigger click
-            $(element).trigger('click');
-        } else if (!isShortPress) {
+            $( element ).trigger( "click" );
+        } else if ( !isShortPress ) {
+
             // Case B: Timer expired -> trigger holdstop (except if isLeave before the timer expires)
             const duration = Date.now() - state.startTime;
-            $(element).trigger($.Event('holdstop', {
+            $( element ).trigger( $.Event( "holdstop", {
                 originalEvent: event,
                 startTime: state.startTime,
                 duration: duration,
                 iterations: state.iteration
-            }));
+            } ) );
         }
 
         // Final cleanup
-        elementStates.delete(element);
+        elementStates.delete( element );
     }
-    
 
 
     /**
@@ -357,16 +353,16 @@
      * @param {AbortController} controller - The AbortController instance.
      * @param {boolean} now - Whether to abort immediately or in the next event cycle.
      */
-    function abortControllerWithDelay(controller, now = false) {
-        if (controller?.signal?.aborted) return;
+    function abortControllerWithDelay( controller, now = false ) {
+        if ( controller?.signal?.aborted ) return;
+
         // Scheduled for next event cycle
-        if (now) {
+        if ( now ) {
             controller?.abort();
         } else {
-            setTimeout(() => controller?.abort(), 0);
+            setTimeout( () => controller?.abort(), 0 );
         }
     }
-    
 
 
     /**
@@ -374,16 +370,16 @@
      * @param {Event} event - The original event.
      * @returns {HTMLElement} - The target element.
      */
-    function getTargetElement(event) {
+    function getTargetElement( event ) {
         const container = event.delegateTarget || event.currentTarget;
-        const selectors = $(container).data('holdSelectors') || []; // Array di selettori
-        
+        const selectors = $( container ).data( "holdSelectors" ) || []; // Array di selettori
+
         // Cerca in TUTTI i selettori registrati
-        for (const selector of selectors) {
-            const target = $(event.target).closest(selector)[0];
-            if (target) return target;
+        for ( const selector of selectors ) {
+            const target = $( event.target ).closest( selector )[ 0 ];
+            if ( target ) return target;
         }
-        
+
         return event.currentTarget;
     }
 
@@ -392,82 +388,82 @@
      * @param {Object} options - The options to normalize.
      * @returns {Object} - The normalized options.
      */
-    function normalizeOptions(options) {
-        
-        const id = Math.max(0, parseInt(options.initialDelay) || defaults.initialDelay);
-        const ri = Math.max(50, parseInt(options.repeatInterval) || defaults.repeatInterval);
-        
+    function normalizeOptions( options ) {
+
+        const id = Math.max( 0, parseInt( options.initialDelay ) || defaults.initialDelay );
+        const ri = Math.max( 50, parseInt( options.repeatInterval ) || defaults.repeatInterval );
+
         return {
             initialDelay: id,
             repeatInterval: ri,
             preventScrollOnTouch: !!options.preventScrollOnTouch,
-            acceleration: typeof options.acceleration === 'number' ? 
-                Math.min(1, Math.max(0, options.acceleration)) : false,
-            accelerateAfter: Math.max(1, parseInt(options.accelerateAfter) || defaults.accelerateAfter),
-            minRepeatInterval: Math.max(10, parseInt(options.minRepeatInterval) || defaults.minRepeatInterval),
-            maxIterations: Math.max(1, parseInt(options.maxIterations)) || Infinity,
-            maxDuration: Math.max(id + ri, parseInt(options.maxDuration)) || Infinity,
+            acceleration: typeof options.acceleration === "number" ?
+                Math.min( 1, Math.max( 0, options.acceleration ) ) : false,
+            accelerateAfter: Math.max( 1, parseInt( options.accelerateAfter ) || defaults.accelerateAfter ),
+            minRepeatInterval: Math.max( 10, parseInt( options.minRepeatInterval ) || defaults.minRepeatInterval ),
+            maxIterations: Math.max( 1, parseInt( options.maxIterations ) ) || Infinity,
+            maxDuration: Math.max( id + ri, parseInt( options.maxDuration ) ) || Infinity,
         };
-    }    
+    }
 
 
     /**
      * jQuery special event setup for "holdrepeat".
      */
     $.event.special.holdrepeat = {
-        setup: function(data) { /* empty */ }, 
-        teardown: function() { /* empty */ }, 
+        setup: function( data ) { /* empty */ },
+        teardown: function() { /* empty */ },
 
         /**
          * Adds event handlers for the "holdrepeat" event.
          * @param {Object} handleObj - The event handler object.
          */
-        add: function(handleObj) {
+        add: function( handleObj ) {
 
             const options = normalizeOptions(
-                $.extend({}, defaults, handleObj.data)
+                $.extend( {}, defaults, handleObj.data )
             );
             const selector = handleObj.selector;
             const container = this;
 
             // Add the selector to the array (only for delegated elements)
-            if (selector) {
-                const selectors = $(container).data('holdSelectors') || [];
-                if (!selectors.includes(selector)) {
-                    $(container).data('holdSelectors', [...selectors, selector]);
+            if ( selector ) {
+                const selectors = $( container ).data( "holdSelectors" ) || [];
+                if ( !selectors.includes( selector ) ) {
+                    $( container ).data( "holdSelectors", [ ...selectors, selector ] );
                 }
             }
 
             // Safe namespace
-            const eventNamespace = selector ? 
-                `.hold_${selector.replace(/[^a-z0-9]/gi, '')}` : 
+            const eventNamespace = selector ?
+                `.hold_${selector.replace(/[^a-z0-9]/gi, '')}` :
                 '';
 
-            $(container)
-                .data('holdOptions', options)
-                .on(`mousedown${eventNamespace} touchstart${eventNamespace}`, selector || null, handleStart)
-                .on(`mouseup${eventNamespace} mouseleave${eventNamespace} touchend${eventNamespace} touchcancel${eventNamespace}`, selector || null, handleEnd);
+            $( container )
+                .data( "holdOptions", options )
+                .on( `mousedown${eventNamespace} touchstart${eventNamespace}`, selector || null, handleStart )
+                .on( `mouseup${eventNamespace} mouseleave${eventNamespace} touchend${eventNamespace} touchcancel${eventNamespace}`, selector || null, handleEnd );
         },
 
         /**
          * Removes event handlers for the "holdrepeat" event.
          * @param {Object} handleObj - The event handler object.
          */
-        remove: function(handleObj) {
+        remove: function( handleObj ) {
             const selector = handleObj.selector;
             const container = this;
 
             // Remove the selector from the array
-            const selectors = $(container).data('holdSelectors') || [];
-            $(container).data('holdSelectors', selectors.filter(s => s !== selector));
+            const selectors = $( container ).data( "holdSelectors" ) || [];
+            $( container ).data( "holdSelectors", selectors.filter( s => s !== selector ) );
 
             // Unique namespace to remove events
             const eventNamespace = `.hold_${selector.replace(/[^a-z0-9]/g, '')}`;
-            
-            $(container)
-                .off(`mousedown${eventNamespace} touchstart${eventNamespace}`)
-                .off(`mouseup${eventNamespace} mouseleave${eventNamespace} touchend${eventNamespace} touchcancel${eventNamespace}`);
+
+            $( container )
+                .off( `mousedown${eventNamespace} touchstart${eventNamespace}` )
+                .off( `mouseup${eventNamespace} mouseleave${eventNamespace} touchend${eventNamespace} touchcancel${eventNamespace}` );
         },
     };
 
-})(jQuery);
+} )( jQuery );
